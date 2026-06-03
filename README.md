@@ -15,7 +15,116 @@ SnipURL is a fast and minimal URL shortener built with a React + TypeScript fron
 - 🆔 Unique short codes generated on the backend
 
 ---
+# 🔗 URL Shortener — Base62 Encoding
 
+A URL shortener maps a long URL to a short, unique code. **Base62 encoding** is the most common way to generate that short code from a numeric ID.
+
+---
+
+## How It Works
+
+```
+Long URL → Store in DB → Get Auto-increment ID → Base62 Encode → Short Code
+https://example.com/very/long/url  →  ID: 12345  →  "dnh"
+```
+
+1. A long URL is saved to the database and gets a unique numeric ID (e.g. `12345`)
+2. That ID is encoded into a short alphanumeric string using Base62
+3. The short code is appended to your domain: `https://short.ly/dnh`
+4. When someone visits the short URL, decode the code back to the ID and look up the original URL
+
+---
+
+## What is Base62?
+
+Base62 uses **62 characters** as its alphabet:
+
+```
+0-9  →  10 digits
+a-z  →  26 lowercase letters
+A-Z  →  26 uppercase letters
+─────────────────────────────
+Total: 62 characters
+```
+
+This means every "digit" in Base62 can represent one of 62 values — making short codes compact and URL-safe with no special characters.
+
+---
+
+## Why Base62 (not Base64)?
+
+Base64 adds `+` and `/` which are not URL-safe and require percent-encoding. Base62 sticks to alphanumeric characters only, making it clean for URLs.
+
+| Encoding | Alphabet | URL-Safe |
+|---|---|---|
+| Base64 | A-Z, a-z, 0-9, +, / | ❌ |
+| Base62 | A-Z, a-z, 0-9 | ✅ |
+
+---
+
+## The Algorithm
+
+### Encode (ID → Short Code)
+
+```python
+ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+BASE = 62
+
+def encode(num):
+    if num == 0:
+        return ALPHABET[0]
+    result = []
+    while num > 0:
+        result.append(ALPHABET[num % BASE])
+        num //= BASE
+    return ''.join(reversed(result))
+```
+
+### Decode (Short Code → ID)
+
+```python
+def decode(code):
+    num = 0
+    for char in code:
+        num = num * BASE + ALPHABET.index(char)
+    return num
+```
+
+### Example
+
+```
+encode(0)       → "0"
+encode(61)      → "Z"
+encode(62)      → "10"
+encode(12345)   → "dnh"
+encode(3521614606207)  → "zzzzzz"  (6-char max = 62^6 unique URLs)
+```
+
+---
+
+## How Many URLs Can It Handle?
+
+| Code Length | Possible URLs |
+|---|---|
+| 1 char | 62 |
+| 2 chars | 3,844 |
+| 4 chars | ~14.7 million |
+| 6 chars | ~56.8 billion |
+| 8 chars | ~218 trillion |
+
+A 6-character code is enough for most production systems.
+
+---
+
+## Key Concepts
+
+| Term | Meaning |
+|---|---|
+| **Base62** | Numeral system using 62 alphanumeric characters |
+| **Encode** | Convert a numeric ID into a short alphanumeric code |
+| **Decode** | Convert the short code back to the original numeric ID |
+| **Collision** | Two URLs getting the same short code — prevented by using unique IDs |
+| **Auto-increment ID** | A DB-generated unique number used as the input to encode |
 ## 🛠 Tech Stack
 
 **Frontend**
