@@ -51,15 +51,85 @@ This means every "digit" in Base62 can represent one of 62 values — making sho
 
 ---
 
-## Why Base62 (not Base64)?
+## Base62 vs Base64 — Deep Dive
 
-Base64 adds `+` and `/` which are not URL-safe and require percent-encoding. Base62 sticks to alphanumeric characters only, making it clean for URLs.
+Both are positional numeral systems that compress large numbers into short strings. The difference comes down to **which characters they use** and **where you can safely use them**.
 
-| Encoding | Alphabet | URL-Safe |
+---
+
+### The Alphabets
+
+**Base64:**
+```
+A-Z  →  26 uppercase
+a-z  →  26 lowercase
+0-9  →  10 digits
++    →  1 special
+/    →  1 special
+═══════════════════
+Total: 64 characters
+```
+And uses `=` as **padding** when the output length isn't a multiple of 4.
+
+**Base62:**
+```
+0-9  →  10 digits
+a-z  →  26 lowercase
+A-Z  →  26 uppercase
+═══════════════════
+Total: 62 characters  (no specials, no padding)
+```
+
+---
+
+### The Problem with Base64 in URLs
+
+The `+`, `/`, and `=` characters have **special meaning in URLs**:
+
+| Character | Meaning in URL |
+|---|---|
+| `+` | Represents a space in query strings |
+| `/` | Path separator |
+| `=` | Key-value separator in query params |
+
+So a Base64 string like `dGVzdA==` in a URL becomes `dGVzdA%3D%3D` after percent-encoding — ugly, longer, and error-prone.
+
+**Base64 URL-safe variant** exists (`-` and `_` instead of `+` and `/`) but still has the `=` padding issue and is less readable.
+
+Base62 simply avoids all of this — no special characters, no padding, no encoding needed.
+
+---
+
+### Practical Comparison
+
+Given the numeric ID `123456789`:
+
+| Encoding | Output | Length | URL-Safe |
+|---|---|---|---|
+| Base10 | `123456789` | 9 chars | ✅ |
+| Base62 | `8M0kX` | 5 chars | ✅ |
+| Base64 | `B0PN` | 4 chars | ⚠️ (may contain `+`, `/`, `=`) |
+
+Base64 *is* slightly shorter — you get more compression per character because the alphabet is larger. But that marginal gain isn't worth the URL headaches in most cases.
+
+---
+
+### When to use which
+
+| Use Case | Best Choice | Why |
 |---|---|---|
-| Base64 | A-Z, a-z, 0-9, +, / | ❌ |
-| Base62 | A-Z, a-z, 0-9 | ✅ |
+| URL shortener | **Base62** | Clean, no special chars, no encoding needed |
+| Encoding binary data (images, files) | **Base64** | Standard, widely supported, size matters |
+| JWTs / HTTP headers | **Base64 URL-safe** | Standardized format with broad library support |
+| Unique IDs in paths or query params | **Base62** | Safe in any part of a URL without escaping |
+| Email or HTML embedding | **Base64** | Built-in support across all mail clients |
 
+---
+
+### The Bottom Line
+
+> Base64 was designed for **encoding binary data** (like files and images) into text.
+> Base62 was naturally adopted for **human-facing tokens and URLs** because it's compact, readable, and safe everywhere.
 ---
 
 ## The Algorithm
